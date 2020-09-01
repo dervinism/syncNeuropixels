@@ -14,21 +14,26 @@ function transformedLFP = syncLFP(lfp, dt, tFunc)
 %
 % Output: transformedLFP - a transformed LFP vector or matrix.
 
+if isempty(lfp) || (tFunc.a == 0 && tFunc.b == 1)
+  transformedLFP = lfp;
+  return
+end
+
 originalInds = 1:size(lfp,2);
 originalTime = originalInds.*dt;
 
 transformedTime = tFunc.a + tFunc.b*originalTime;
 transformedInds = round(transformedTime./dt);
 
-lfp = lfp(transformedInds > 0);
+lfp = lfp(:,transformedInds > 0);
 originalInds = originalInds(transformedInds > 0);
 transformedInds = transformedInds(transformedInds > 0);
-transformedTime = transformedInds.*dt;
-interpTime = (1:transformedInds(end)).*dt;
 if transformedInds(1) > 1
-  lfp = interp1(transformedTime, lfp, interpTime, 'linear','extrap');
-  originalInds = [1:transformedInds(1)-1 originalInds+transformedInds(1)-1];
-  transformedInds = [1:transformedInds(1)-1 transformedInds];
+  inds2add = 1:transformedInds(1)-1;
+  originalInds = [inds2add originalInds+transformedInds(1)-1];
+  transformedInds = [inds2add transformedInds];
+  lfp2add = repmat(mean(lfp,2),1,numel(inds2add));
+  lfp = [lfp2add lfp];
 end
 
 if transformedInds(end) < originalInds(end) % Contract the vector

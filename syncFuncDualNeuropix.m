@@ -33,7 +33,9 @@ function [syncFunc_1to2, syncFunc_2to1] = syncFuncDualNeuropix(dataFilename1, da
 %            being initiated. The default option string value is 'no'. If
 %            chosen 'start', will crop the initial part of the data. If
 %            chosen 'end', will crop the end part of the pupil/ total
-%            movement data.
+%            movement data. In the case where the detected frame times
+%            vector is longer than the pupil/total movement data, the
+%            function crops the detected frame times in a similar fashion.
 % Output: syncFunc_1to2 - a linear transformation function from detected
 %           frame times based on dataFilename1 to detected frame times
 %           based on dataFilename2. It takes the following form:
@@ -49,11 +51,17 @@ if nargin < 6 || ~isfield(opt, 'updatePupilData')
 elseif ~strcmp(opt.updatePupilData, 'larger') && ~strcmp(opt.updatePupilData, 'smaller') && ~strcmp(opt.updatePupilData, 'no')
   error('The opt.updatePupilData field value is not set correctly. Acceptable string values are the following: larger, smaller, or no.')
 end
+if ~isfield(opt, 'pupilDataFile')
+  opt.pupilDataFile = [];
+end
 
 if ~isfield(opt, 'updateMovementData')
   opt.updateMovementData = 'no';
 elseif ~strcmp(opt.updateMovementData, 'larger') && ~strcmp(opt.updateMovementData, 'smaller') && ~strcmp(opt.updateMovementData, 'no')
   error('The opt.updateMovementData field value is not set correctly. Acceptable string values are the following: larger, smaller, or no.')
+end
+if ~isfield(opt, 'movementDataFile')
+  opt.movementDataFile = [];
 end
 
 if ~isfield(opt, 'dataCrop')
@@ -129,27 +137,37 @@ if ~strcmp(opt.updatePupilData, 'no') && ~isempty(opt.pupilDataFile)
   
   % Deal with unequal lengths
   if ~strcmp(opt.dataCrop, 'no')
-    if strcmp(opt.dataCrop, 'end')
-      inds = 1:numel(results.frameTimes);
-    elseif strcmp(opt.dataCrop, 'start')
-      inds = numel(results.area)-numel(results.frameTimes)+1:numel(results.area);
+    if numel(results.area) > numel(results.frameTimes)
+      if strcmp(opt.dataCrop, 'end')
+        inds = 1:numel(results.frameTimes);
+      elseif strcmp(opt.dataCrop, 'start')
+        inds = numel(results.area)-numel(results.frameTimes)+1:numel(results.area);
+      end
+      results.x = results.x(inds);
+      results.y = results.y(inds);
+      results.aAxis = results.aAxis(inds);
+      results.bAxis = results.bAxis(inds);
+      results.abAxis = results.abAxis(inds);
+      results.area = abs(results.area(inds));
+      results.goodFit = results.goodFit(inds);
+      results.blink = results.blink(inds);
+      results.saturation = results.saturation(inds);
+      results.threshold = results.threshold(inds);
+      results.roi = results.roi(inds,:);
+      results.equation = results.equation(inds);
+      results.xxContour = results.xxContour(inds);
+      results.yyContour = results.yyContour(inds);
+      results.blink = results.blink(inds);
+      results.blinkRho = results.blinkRho(inds);
+    elseif numel(results.area) < numel(results.frameTimes)
+      if strcmp(opt.dataCrop, 'end')
+        inds = 1:numel(results.area);
+      elseif strcmp(opt.dataCrop, 'start')
+        inds = numel(results.frameTimes)-numel(results.area)+1:numel(results.frameTimes);
+      end
+      results.frameTimes = results.frameTimes(inds);
+      results.frameInd = results.frameInd(inds);
     end
-    results.x = results.x(inds);
-    results.y = results.y(inds);
-    results.aAxis = results.aAxis(inds);
-    results.bAxis = results.bAxis(inds);
-    results.abAxis = results.abAxis(inds);
-    results.area = abs(results.area(inds));
-    results.goodFit = results.goodFit(inds);
-    results.blink = results.blink(inds);
-    results.saturation = results.saturation(inds);
-    results.threshold = results.threshold(inds);
-    results.roi = results.roi(inds,:);
-    results.equation = results.equation(inds);
-    results.xxContour = results.xxContour(inds);
-    results.yyContour = results.yyContour(inds);
-    results.blink = results.blink(inds);
-    results.blinkRho = results.blinkRho(inds);
   end
   
   % Save the updated file
@@ -182,13 +200,23 @@ if ~strcmp(opt.updateMovementData, 'no') && ~isempty(opt.movementDataFile)
   
   % Deal with unequal lengths
   if ~strcmp(opt.dataCrop, 'no')
-    if strcmp(opt.dataCrop, 'end')
-      inds = 1:numel(frameTimes);
-    elseif strcmp(opt.dataCrop, 'start')
-      inds = numel(s)-numel(frameTimes)+1:numel(s);
+    if numel(s) > numel(frameTimes)
+      if strcmp(opt.dataCrop, 'end')
+        inds = 1:numel(frameTimes);
+      elseif strcmp(opt.dataCrop, 'start')
+        inds = numel(s)-numel(frameTimes)+1:numel(s);
+      end
+      s = s(inds);
+      sa = sa(inds); %#ok<*NODEF>
+    elseif numel(s) < numel(frameTimes)
+      if strcmp(opt.dataCrop, 'end')
+        inds = 1:numel(s);
+      elseif strcmp(opt.dataCrop, 'start')
+        inds = numel(frameTimes)-numel(s)+1:numel(frameTimes);
+      end
+      frameTimes = frameTimes(inds);
+      frameInd = frameInd(inds);
     end
-    s = s(inds);
-    sa = sa(inds); %#ok<*NODEF>
   end
   
   % Save the updated file

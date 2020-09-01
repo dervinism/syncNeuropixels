@@ -13,13 +13,18 @@ function transformedRaster = syncAPs(raster, dt, tFunc)
 %
 % Output: transformedRaster - a transformed spike count vector or matrix.
 
+if isempty(raster) || (tFunc.a == 0 && tFunc.b == 1)
+  transformedRaster = raster;
+  return
+end
+
 originalInds = 1:size(raster,2);
 originalTime = originalInds.*dt;
 
 transformedTime = tFunc.a + tFunc.b*originalTime;
 transformedInds = round(transformedTime./dt);
 
-raster = raster(transformedInds > 0);
+raster = raster(:,transformedInds > 0);
 originalInds = originalInds(transformedInds > 0);
 transformedInds = transformedInds(transformedInds > 0);
 if transformedInds(1) > 1

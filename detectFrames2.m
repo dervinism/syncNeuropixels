@@ -33,8 +33,22 @@ end
 
 % Detect frame times
 t = 1/sr:1/sr:numel(eyeData)/sr;
-[peaks, frameInd] = findpeaks(single(eyeData), 'MinPeakWidth',5);
+eyeDataLogical = eyeData;
+eyeDataLogical(eyeDataLogical <= 10) = -1;
+eyeDataLogical(eyeDataLogical > 0) = 1;
+eyeDataLogical(eyeDataLogical < 0) = 0;
+[~, frameIndInit] = findpeaks(single(eyeDataLogical));
+eyeDataLogical(frameIndInit-1) = 0;
+eyeDataLogical(frameIndInit) = 0;
+eyeDataLogical(frameIndInit+1) = 0;
+[~, frameInd] = findpeaks(single(eyeDataLogical));
+frameInd = frameInd-2;
+peaks = eyeData(frameInd);
 frameTimes = t(frameInd);
+
+% Test agreement with the old method
+% [~, frameInd2] = findpeaks(single(eyeData), 'MinPeakWidth',5);
+% assert(numel(frameInd) == numel(frameInd2))
 
 % Plot the data
 figure; plot(t, eyeData,'r')
