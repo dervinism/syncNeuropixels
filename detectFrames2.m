@@ -11,10 +11,16 @@ function [frameTimes, frameInd] = detectFrames2(dataFilename, nChans, sr)
 
 chunkSize = 1000000;
 
-fid = fopen(dataFilename, 'r');
+try
+  fid = fopen(dataFilename, 'r');
+  d = dir(dataFilename);
+  nSampsTotal = d.bytes/nChans/2;
+catch
+  fid = fopen([dataFilename(1:end-3) 'dat'], 'r');
+  d = dir([dataFilename(1:end-3) 'dat']);
+  nSampsTotal = d.bytes/nChans/2;
+end
 
-d = dir(dataFilename);
-nSampsTotal = d.bytes/nChans/2;
 nChunksTotal = ceil(nSampsTotal/chunkSize);
 
 % Load voltage data

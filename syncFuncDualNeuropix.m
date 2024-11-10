@@ -1,5 +1,5 @@
-function [syncFunc_1to2, syncFunc_2to1] = syncFuncDualNeuropix(dataFilename1, dataFilename2, chN1, chN2, sr, opt)
-% [syncFunc_1to2, syncFunc_2to1] = syncFuncDualNeuropix(dataFilename1, dataFilename2, chN1, chN2, sr, opt)
+function [syncFunc_1to2, syncFunc_2to1, extraOutput] = syncFuncDualNeuropix(dataFilename1, dataFilename2, chN1, chN2, sr, opt)
+% [syncFunc_1to2, syncFunc_2to1, extraOutput] = syncFuncDualNeuropix(dataFilename1, dataFilename2, chN1, chN2, sr, opt)
 %
 % Function estimates synchronisation functions for dual Neuropixels probes.
 % Input: dataFilename1 - full path to probe 1 recording binary file.
@@ -44,6 +44,7 @@ function [syncFunc_1to2, syncFunc_2to1] = syncFuncDualNeuropix(dataFilename1, da
 %           scalar fields a and b.
 %         syncFunc_2to1 is equivalent to syncFunc_1to2 but in the opposite
 %           direction.
+%         extraOutput - updated pupil/total movement data.
 
 %% Check input variables
 if nargin < 6 || ~isfield(opt, 'updatePupilData')
@@ -114,7 +115,11 @@ syncFunc_2to1.b = b_2to1;
 
 %% Update pupil data
 if ~strcmp(opt.updatePupilData, 'no') && ~isempty(opt.pupilDataFile)
-  load(opt.pupilDataFile); % load pupil data
+  if strcmp(opt.pupilDataFile(end-2:end), 'mat')
+    load(opt.pupilDataFile); % load pupil data
+  elseif strcmp(opt.pupilDataFile(end-2:end), 'csv')
+    results.area = calcPupilArea(opt.pupilDataFile);
+  end
   
   % Update pupil data with frame time info
   if strcmp(opt.updatePupilData, 'larger')
@@ -143,22 +148,26 @@ if ~strcmp(opt.updatePupilData, 'no') && ~isempty(opt.pupilDataFile)
       elseif strcmp(opt.dataCrop, 'start')
         inds = numel(results.area)-numel(results.frameTimes)+1:numel(results.area);
       end
-      results.x = results.x(inds);
-      results.y = results.y(inds);
-      results.aAxis = results.aAxis(inds);
-      results.bAxis = results.bAxis(inds);
-      results.abAxis = results.abAxis(inds);
-      results.area = abs(results.area(inds));
-      results.goodFit = results.goodFit(inds);
-      results.blink = results.blink(inds);
-      results.saturation = results.saturation(inds);
-      results.threshold = results.threshold(inds);
-      results.roi = results.roi(inds,:);
-      results.equation = results.equation(inds);
-      results.xxContour = results.xxContour(inds);
-      results.yyContour = results.yyContour(inds);
-      results.blink = results.blink(inds);
-      results.blinkRho = results.blinkRho(inds);
+      if isfield(results,'x')
+        results.x = results.x(inds);
+        results.y = results.y(inds);
+        results.aAxis = results.aAxis(inds);
+        results.bAxis = results.bAxis(inds);
+        results.abAxis = results.abAxis(inds);
+        results.area = abs(results.area(inds));
+        results.goodFit = results.goodFit(inds);
+        results.blink = results.blink(inds);
+        results.saturation = results.saturation(inds);
+        results.threshold = results.threshold(inds);
+        results.roi = results.roi(inds,:);
+        results.equation = results.equation(inds);
+        results.xxContour = results.xxContour(inds);
+        results.yyContour = results.yyContour(inds);
+        results.blink = results.blink(inds);
+        results.blinkRho = results.blinkRho(inds);
+      else
+        results.area = abs(results.area(inds));
+      end
     elseif numel(results.area) < numel(results.frameTimes)
       if strcmp(opt.dataCrop, 'end')
         inds = 1:numel(results.area);
@@ -171,7 +180,11 @@ if ~strcmp(opt.updatePupilData, 'no') && ~isempty(opt.pupilDataFile)
   end
   
   % Save the updated file
-  save(opt.pupilDataFile, 'results','state'); %#ok<*USENS>
+  if strcmp(opt.pupilDataFile(end-2:end), 'mat')
+    save(opt.pupilDataFile, 'results','state'); %#ok<*USENS>
+  elseif strcmp(opt.pupilDataFile(end-2:end), 'csv')
+    % Currently not updating csv eye data files
+  end
 end
 
 
@@ -221,4 +234,15 @@ if ~strcmp(opt.updateMovementData, 'no') && ~isempty(opt.movementDataFile)
   
   % Save the updated file
   save(opt.movementDataFile, 's','sa','frameTimes','frameInd');
+end
+
+
+%% Assign extra output
+if exist('results','var')
+  extraOutput = results;
+elseif exist('s','var') && exist('sa','var')
+  extraOutput.s = s;
+  extraOutput.sa = sa;
+else
+  extraOutput = [];
 end
